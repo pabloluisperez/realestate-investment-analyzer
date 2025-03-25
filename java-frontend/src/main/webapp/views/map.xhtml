@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://xmlns.jcp.org/jsf/html"
+      xmlns:f="http://xmlns.jcp.org/jsf/core"
+      xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+      xmlns:p="http://primefaces.org/ui">
+
+<ui:composition template="/templates/template.xhtml">
+    <ui:define name="title">Map View - Real Estate Investment Analysis</ui:define>
+    
+    <ui:define name="head">
+        <style type="text/css">
+            .mapContainer {
+                width: 100%;
+                height: 600px;
+            }
+        </style>
+    </ui:define>
+    
+    <ui:define name="content">
+        <div class="page-header p-4 text-center text-white mb-4">
+            <h1><i class="pi pi-map mr-2"></i> Property Map</h1>
+            <p class="lead">Explore properties and investment opportunities on the map</p>
+        </div>
+        
+        <!-- Filters Section -->
+        <div class="card mb-4 filter-section">
+            <h3 class="mb-3"><i class="pi pi-filter mr-2"></i> Map Filters</h3>
+            <h:form id="map-filter-form">
+                <div class="p-grid p-mb-3">
+                    <div class="p-col-12 p-md-3">
+                        <p:outputLabel for="city" value="City" />
+                        <p:selectOneMenu id="city" value="#{mapBean.city}" style="width: 100%">
+                            <f:selectItem itemLabel="Select a city" itemValue="" />
+                            <f:selectItems value="#{propertyBean.cities}" />
+                        </p:selectOneMenu>
+                    </div>
+                    <div class="p-col-12 p-md-3">
+                        <p:outputLabel for="neighborhood" value="Neighborhood" />
+                        <p:selectOneMenu id="neighborhood" value="#{mapBean.neighborhood}" style="width: 100%">
+                            <f:selectItem itemLabel="Select a neighborhood" itemValue="" />
+                            <f:selectItems value="#{propertyBean.neighborhoods}" />
+                        </p:selectOneMenu>
+                    </div>
+                    <div class="p-col-12 p-md-3">
+                        <p:outputLabel for="propertyType" value="Property Type" />
+                        <p:selectOneMenu id="propertyType" value="#{mapBean.propertyType}" style="width: 100%">
+                            <f:selectItem itemLabel="All types" itemValue="" />
+                            <f:selectItem itemLabel="Apartment" itemValue="apartment" />
+                            <f:selectItem itemLabel="House" itemValue="house" />
+                            <f:selectItem itemLabel="Penthouse" itemValue="penthouse" />
+                            <f:selectItem itemLabel="Studio" itemValue="studio" />
+                        </p:selectOneMenu>
+                    </div>
+                    <div class="p-col-12 p-md-3">
+                        <p:outputLabel for="operationType" value="Operation" />
+                        <p:selectOneMenu id="operationType" value="#{mapBean.operationType}" style="width: 100%">
+                            <f:selectItem itemLabel="For Sale" itemValue="sale" />
+                            <f:selectItem itemLabel="For Rent" itemValue="rent" />
+                        </p:selectOneMenu>
+                    </div>
+                    <div class="p-col-12 p-md-6">
+                        <p:outputLabel for="priceRange" value="Price Range (€)" />
+                        <div class="p-inputgroup">
+                            <p:inputNumber id="minPrice" value="#{mapBean.minPrice}" placeholder="Min €" symbol="€" symbolPosition="s" decimalPlaces="0" />
+                            <span class="p-inputgroup-addon">-</span>
+                            <p:inputNumber id="maxPrice" value="#{mapBean.maxPrice}" placeholder="Max €" symbol="€" symbolPosition="s" decimalPlaces="0" />
+                        </div>
+                    </div>
+                    <div class="p-col-12 p-md-6 p-d-flex p-ai-end">
+                        <p:commandButton value="Apply Filters" icon="pi pi-search" action="#{mapBean.applyFilters}" 
+                                        styleClass="p-mr-2" update="@form :map-panel :properties-summary" />
+                        <p:commandButton value="Reset" icon="pi pi-undo" type="reset" action="#{mapBean.resetFilters}" 
+                                        styleClass="p-ml-2 ui-button-secondary" update="@form :map-panel :properties-summary" />
+                    </div>
+                </div>
+            </h:form>
+        </div>
+        
+        <!-- Map and Properties Panel -->
+        <div class="p-grid">
+            <!-- Map Panel -->
+            <div class="p-col-12 p-md-8">
+                <div class="card">
+                    <h:form id="map-panel">
+                        <p:gmap id="propertyMap" center="#{mapBean.center}" zoom="#{mapBean.zoom}"
+                               type="ROADMAP" model="#{mapBean.mapModel}" style="width:100%;height:600px">
+                            <p:ajax event="overlaySelect" listener="#{mapBean.onMarkerSelect}" update=":property-info-panel" />
+                        </p:gmap>
+                    </h:form>
+                </div>
+            </div>
+            
+            <!-- Property Info Panel -->
+            <div class="p-col-12 p-md-4">
+                <p:outputPanel id="properties-summary" styleClass="mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h4>Properties on Map</h4>
+                            <p>
+                                Showing #{mapBean.mapProperties.size()} properties
+                                <ui:fragment rendered="#{not empty mapBean.city}">
+                                    in #{mapBean.city}
+                                </ui:fragment>
+                                <ui:fragment rendered="#{not empty mapBean.neighborhood}">
+                                    , #{mapBean.neighborhood}
+                                </ui:fragment>
+                            </p>
+                            
+                            <div class="marker-legend mt-3">
+                                <h5>Marker Legend</h5>
+                                <ul class="list-unstyled">
+                                    <li><img src="https://maps.google.com/mapfiles/ms/icons/green-dot.png" width="20" /> High investment score (70-100)</li>
+                                    <li><img src="https://maps.google.com/mapfiles/ms/icons/yellow-dot.png" width="20" /> Medium investment score (50-69)</li>
+                                    <li><img src="https://maps.google.com/mapfiles/ms/icons/red-dot.png" width="20" /> Low investment score (0-49)</li>
+                                    <li><img src="https://maps.google.com/mapfiles/ms/icons/blue-dot.png" width="20" /> No investment score</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </p:outputPanel>
+                
+                <p:outputPanel id="property-info-panel">
+                    <ui:fragment rendered="#{not empty mapBean.selectedProperty}">
+                        <div class="card property-card">
+                            <ui:fragment rendered="#{mapBean.selectedProperty.investmentScore != null}">
+                                <div class="investment-badge bg-#{mapBean.selectedProperty.investmentScoreClass}">
+                                    <h:outputText value="#{mapBean.selectedProperty.investmentScore}">
+                                        <f:convertNumber pattern="#,##0" locale="es" />
+                                    </h:outputText>/100
+                                </div>
+                            </ui:fragment>
+                            <div class="card-body">
+                                <h4 class="card-title">#{mapBean.selectedProperty.title}</h4>
+                                <p class="property-price">
+                                    <h:outputText value="#{mapBean.selectedProperty.price}">
+                                        <f:convertNumber pattern="#,##0 €" locale="es" />
+                                    </h:outputText>
+                                </p>
+                                
+                                <ui:fragment rendered="#{mapBean.selectedProperty.pricePerSqm != null}">
+                                    <p>
+                                        <h:outputText value="#{mapBean.selectedProperty.pricePerSqm}">
+                                            <f:convertNumber pattern="#,##0 €/m²" locale="es" />
+                                        </h:outputText>
+                                    </p>
+                                </ui:fragment>
+                                
+                                <div class="property-features">
+                                    <ui:fragment rendered="#{mapBean.selectedProperty.size != null}">
+                                        <div class="property-feature">
+                                            <i class="pi pi-th-large"></i> #{mapBean.selectedProperty.size} m²
+                                        </div>
+                                    </ui:fragment>
+                                    
+                                    <ui:fragment rendered="#{mapBean.selectedProperty.rooms != null}">
+                                        <div class="property-feature">
+                                            <i class="pi pi-tablet"></i> #{mapBean.selectedProperty.rooms} rooms
+                                        </div>
+                                    </ui:fragment>
+                                    
+                                    <ui:fragment rendered="#{mapBean.selectedProperty.bathrooms != null}">
+                                        <div class="property-feature">
+                                            <i class="pi pi-inbox"></i> #{mapBean.selectedProperty.bathrooms} baths
+                                        </div>
+                                    </ui:fragment>
+                                </div>
+                                
+                                <p class="mt-2">
+                                    <i class="pi pi-map-marker"></i> #{mapBean.selectedProperty.formattedLocation}
+                                </p>
+                                
+                                <ui:fragment rendered="#{not empty mapBean.selectedProperty.description}">
+                                    <p class="property-description mt-2">
+                                        <h:outputText value="#{mapBean.selectedProperty.description}" escape="false" />
+                                    </p>
+                                </ui:fragment>
+                            </div>
+                            <div class="card-footer">
+                                <h:form>
+                                    <p:commandButton value="View Details" icon="pi pi-search" 
+                                                    action="properties" styleClass="p-button-sm">
+                                        <f:param name="propertyId" value="#{mapBean.selectedProperty.id}" />
+                                        <f:param name="source" value="#{mapBean.selectedProperty.source}" />
+                                    </p:commandButton>
+                                    
+                                    <ui:fragment rendered="#{not empty mapBean.selectedProperty.url}">
+                                        <a href="#{mapBean.selectedProperty.url}" target="_blank" class="ui-button ui-button-secondary ui-button-sm float-right">
+                                            <i class="pi pi-external-link"></i>
+                                        </a>
+                                    </ui:fragment>
+                                </h:form>
+                            </div>
+                        </div>
+                    </ui:fragment>
+                    
+                    <ui:fragment rendered="#{empty mapBean.selectedProperty}">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <i class="pi pi-map-marker mb-3" style="font-size: 2rem;"></i>
+                                <h5>Property Information</h5>
+                                <p>Click on a marker to see property details</p>
+                            </div>
+                        </div>
+                    </ui:fragment>
+                </p:outputPanel>
+            </div>
+        </div>
+    </ui:define>
+</ui:composition>
+
+</html>
