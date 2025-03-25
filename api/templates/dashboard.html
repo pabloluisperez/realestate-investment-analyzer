@@ -1,0 +1,1020 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Real Estate Investment Analysis{% endblock %}
+
+{% block head %}
+<!-- Leaflet CSS for maps -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<!-- Chart.js for data visualization -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header text-center text-white p-4">
+    <h1><i class="fas fa-chart-line me-2"></i> Real Estate Investment Analysis</h1>
+    <p class="lead">Find the best investment opportunities in the Spanish real estate market</p>
+</div>
+
+<!-- Filters Section -->
+<div class="filter-section mb-4">
+    <h3 class="mb-3"><i class="fas fa-filter me-2"></i> Search Filters</h3>
+    <form id="filter-form">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label for="city-select" class="form-label">City</label>
+                <select id="city-select" class="form-select">
+                    <option value="">Select a city</option>
+                    <!-- Cities will be populated dynamically -->
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="neighborhood-select" class="form-label">Neighborhood</label>
+                <select id="neighborhood-select" class="form-select" disabled>
+                    <option value="">Select a neighborhood</option>
+                    <!-- Neighborhoods will be populated dynamically -->
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="property-type-select" class="form-label">Property Type</label>
+                <select id="property-type-select" class="form-select">
+                    <option value="">All types</option>
+                    <option value="apartment">Apartment</option>
+                    <option value="house">House</option>
+                    <option value="penthouse">Penthouse</option>
+                    <option value="studio">Studio</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="operation-type-select" class="form-label">Operation</label>
+                <select id="operation-type-select" class="form-select">
+                    <option value="sale">For Sale</option>
+                    <option value="rent">For Rent</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="price-range" class="form-label">Price Range</label>
+                <div class="input-group">
+                    <input type="number" id="min-price" class="form-control" placeholder="Min €">
+                    <span class="input-group-text">-</span>
+                    <input type="number" id="max-price" class="form-control" placeholder="Max €">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label for="min-investment-score" class="form-label">Min Investment Score</label>
+                <input type="range" class="form-range" id="min-investment-score" min="0" max="100" value="50">
+                <div class="d-flex justify-content-between">
+                    <small>0</small>
+                    <small id="investment-score-value">50</small>
+                    <small>100</small>
+                </div>
+            </div>
+            <div class="col-md-12 text-center mt-3">
+                <button type="submit" class="btn btn-primary px-4">
+                    <i class="fas fa-search me-2"></i> Search
+                </button>
+                <button type="button" id="reset-filters" class="btn btn-secondary ms-2">
+                    <i class="fas fa-undo me-2"></i> Reset
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white stat-card">
+            <div class="icon">
+                <i class="fas fa-building"></i>
+            </div>
+            <div class="stat-value" id="total-properties">0</div>
+            <div class="stat-label">Total Properties</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white stat-card">
+            <div class="icon">
+                <i class="fas fa-euro-sign"></i>
+            </div>
+            <div class="stat-value" id="avg-price">0 €</div>
+            <div class="stat-label">Average Price</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white stat-card">
+            <div class="icon">
+                <i class="fas fa-ruler-combined"></i>
+            </div>
+            <div class="stat-value" id="avg-price-sqm">0 €/m²</div>
+            <div class="stat-label">Avg. Price per m²</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white stat-card">
+            <div class="icon">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="stat-value" id="opportunity-count">0</div>
+            <div class="stat-label">Investment Opportunities</div>
+        </div>
+    </div>
+</div>
+
+<!-- Map Section -->
+<section id="map-section" class="mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2><i class="fas fa-map-marked-alt me-2"></i> Properties Map</h2>
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="show-heatmap">
+            <label class="form-check-label" for="show-heatmap">Show price heatmap</label>
+        </div>
+    </div>
+    <div class="card">
+        <div id="map-container">
+            <!-- Leaflet map will be inserted here -->
+            <div id="map-loading" class="loading-spinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="mt-2 text-muted">
+        <small><i class="fas fa-info-circle me-1"></i> Click on markers to see property details</small>
+    </div>
+</section>
+
+<!-- Investment Opportunities Section -->
+<section id="opportunities-section" class="mb-5">
+    <h2 class="mb-3"><i class="fas fa-gem me-2"></i> Top Investment Opportunities</h2>
+    <div class="row" id="opportunities-container">
+        <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+        <!-- Opportunities will be loaded here -->
+    </div>
+    <div class="text-center mt-3">
+        <button id="load-more-opportunities" class="btn btn-outline-primary">
+            Load More
+        </button>
+    </div>
+</section>
+
+<!-- Recent Properties Section -->
+<section id="properties-section">
+    <h2 class="mb-3"><i class="fas fa-home me-2"></i> Recent Properties</h2>
+    <div class="row" id="properties-container">
+        <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+        <!-- Properties will be loaded here -->
+    </div>
+    <div class="text-center mt-3">
+        <button id="load-more-properties" class="btn btn-outline-primary">
+            Load More
+        </button>
+    </div>
+</section>
+
+<!-- Property Detail Modal -->
+<div class="modal fade" id="property-detail-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-property-title">Property Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h4 id="modal-property-price" class="text-success mb-3"></h4>
+                        <div id="modal-property-features" class="mb-3"></div>
+                        <p id="modal-property-description" class="mb-4"></p>
+                        
+                        <h5>Location</h5>
+                        <p id="modal-property-location"></p>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card mb-3">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">Investment Score</h5>
+                            </div>
+                            <div class="card-body text-center">
+                                <div id="modal-investment-score" class="investment-score mb-2"></div>
+                                <div class="progress mb-3">
+                                    <div id="modal-score-bar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="mb-0">Investment Metrics</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="modal-investment-metrics"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a id="modal-property-url" href="#" target="_blank" class="btn btn-primary">
+                    <i class="fas fa-external-link-alt me-2"></i> View on Source Website
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Leaflet JS for maps -->
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<!-- Leaflet Heat for heatmap -->
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+<script>
+    // Global variables
+    let map;
+    let markers = [];
+    let heatLayer;
+    let properties = [];
+    let opportunities = [];
+    let currentCity = '';
+    let currentNeighborhood = '';
+    
+    // Initialize the dashboard when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize map
+        initMap();
+        
+        // Load cities
+        loadCities();
+        
+        // Load initial data
+        loadStatistics();
+        loadOpportunities();
+        loadProperties();
+        
+        // Set up event listeners
+        setupEventListeners();
+    });
+    
+    // Initialize Leaflet map
+    function initMap() {
+        // Hide loading indicator after map is initialized
+        document.getElementById('map-loading').style.display = 'none';
+        
+        // Create map centered on Spain
+        map = L.map('map-container').setView([40.416775, -3.703790], 6);
+        
+        // Add tile layer (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Load properties for map
+        loadPropertiesForMap();
+    }
+    
+    // Load cities from API
+    function loadCities() {
+        fetch('/api/cities')
+            .then(response => response.json())
+            .then(cities => {
+                const citySelect = document.getElementById('city-select');
+                cities.forEach(city => {
+                    const option = document.createElement('option');
+                    option.value = city;
+                    option.textContent = city.charAt(0).toUpperCase() + city.slice(1);
+                    citySelect.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error loading cities:', error));
+    }
+    
+    // Load neighborhoods for selected city
+    function loadNeighborhoods(city) {
+        const neighborhoodSelect = document.getElementById('neighborhood-select');
+        neighborhoodSelect.disabled = true;
+        neighborhoodSelect.innerHTML = '<option value="">Select a neighborhood</option>';
+        
+        if (!city) return;
+        
+        fetch(`/api/neighborhoods?city=${city}`)
+            .then(response => response.json())
+            .then(neighborhoods => {
+                neighborhoods.forEach(neighborhood => {
+                    const option = document.createElement('option');
+                    option.value = neighborhood;
+                    option.textContent = neighborhood;
+                    neighborhoodSelect.appendChild(option);
+                });
+                neighborhoodSelect.disabled = false;
+            })
+            .catch(error => console.error('Error loading neighborhoods:', error));
+    }
+    
+    // Load statistics
+    function loadStatistics() {
+        // Build filter parameters
+        const params = new URLSearchParams();
+        if (currentCity) params.append('city', currentCity);
+        if (currentNeighborhood) params.append('neighborhood', currentNeighborhood);
+        
+        // Get property count
+        fetch(`/api/properties?${params.toString()}&limit=1`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('total-properties').textContent = data.length > 0 ? data.length.toLocaleString() : '0';
+            })
+            .catch(error => console.error('Error loading property count:', error));
+            
+        // Get average price and price per sqm
+        // This would typically be a separate API endpoint, but for now we'll simulate
+        fetch(`/api/properties?${params.toString()}&limit=100`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.length > 0) {
+                    // Calculate average price
+                    const prices = data.filter(p => p.price).map(p => p.price);
+                    const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+                    document.getElementById('avg-price').textContent = Math.round(avgPrice).toLocaleString() + ' €';
+                    
+                    // Calculate average price per sqm
+                    const pricesPerSqm = data.filter(p => p.price_per_sqm).map(p => p.price_per_sqm);
+                    const avgPricePerSqm = pricesPerSqm.reduce((a, b) => a + b, 0) / pricesPerSqm.length;
+                    document.getElementById('avg-price-sqm').textContent = Math.round(avgPricePerSqm).toLocaleString() + ' €/m²';
+                } else {
+                    document.getElementById('avg-price').textContent = '0 €';
+                    document.getElementById('avg-price-sqm').textContent = '0 €/m²';
+                }
+            })
+            .catch(error => console.error('Error loading price statistics:', error));
+            
+        // Get opportunity count
+        const minScore = document.getElementById('min-investment-score').value;
+        const opportunityParams = new URLSearchParams(params);
+        opportunityParams.append('min_score', minScore);
+        
+        fetch(`/api/investment/opportunities?${opportunityParams.toString()}&limit=1`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('opportunity-count').textContent = data.length.toLocaleString();
+            })
+            .catch(error => console.error('Error loading opportunity count:', error));
+    }
+    
+    // Load properties for the map
+    function loadPropertiesForMap() {
+        // Clear existing markers
+        markers.forEach(marker => map.removeLayer(marker));
+        markers = [];
+        
+        if (heatLayer) {
+            map.removeLayer(heatLayer);
+            heatLayer = null;
+        }
+        
+        // Build filter parameters
+        const params = new URLSearchParams();
+        if (currentCity) params.append('city', currentCity);
+        if (currentNeighborhood) params.append('neighborhood', currentNeighborhood);
+        
+        const propertyType = document.getElementById('property-type-select').value;
+        if (propertyType) params.append('property_type', propertyType);
+        
+        const operationType = document.getElementById('operation-type-select').value;
+        if (operationType) params.append('operation_type', operationType);
+        
+        const minPrice = document.getElementById('min-price').value;
+        if (minPrice) params.append('min_price', minPrice);
+        
+        const maxPrice = document.getElementById('max-price').value;
+        if (maxPrice) params.append('max_price', maxPrice);
+        
+        // Fetch properties with coordinates
+        fetch(`/api/properties/map?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.length > 0) {
+                    // Store properties
+                    properties = data;
+                    
+                    // Create markers and heat data
+                    const heatData = [];
+                    
+                    data.forEach(property => {
+                        if (property.latitude && property.longitude) {
+                            // Create marker
+                            const marker = L.marker([property.latitude, property.longitude])
+                                .addTo(map)
+                                .bindPopup(createPopupContent(property));
+                                
+                            marker.on('click', () => {
+                                // Open popup and get full property details
+                                getPropertyDetails(property.id, property.source);
+                            });
+                            
+                            markers.push(marker);
+                            
+                            // Add to heat data if price exists
+                            if (property.price) {
+                                // Intensity based on investment score (if available) or default value
+                                const intensity = property.investment_score ? property.investment_score / 100 : 0.5;
+                                heatData.push([property.latitude, property.longitude, intensity]);
+                            }
+                        }
+                    });
+                    
+                    // Create heat layer
+                    if (heatData.length > 0) {
+                        heatLayer = L.heatLayer(heatData, {
+                            radius: 25,
+                            blur: 15,
+                            maxZoom: 17,
+                            gradient: {0.4: 'blue', 0.65: 'lime', 1: 'red'}
+                        });
+                        
+                        // Only add to map if heatmap toggle is checked
+                        if (document.getElementById('show-heatmap').checked) {
+                            heatLayer.addTo(map);
+                        }
+                    }
+                    
+                    // Adjust map bounds if we have markers
+                    if (markers.length > 0) {
+                        const group = L.featureGroup(markers);
+                        map.fitBounds(group.getBounds(), {padding: [50, 50]});
+                    }
+                } else {
+                    // No properties with coordinates found
+                    console.log('No properties with coordinates found');
+                }
+            })
+            .catch(error => console.error('Error loading map properties:', error));
+    }
+    
+    // Create popup content for map markers
+    function createPopupContent(property) {
+        let content = `
+            <div style="width: 200px">
+                <h6>${property.title || 'Property'}</h6>
+                <p class="text-success fw-bold">${property.price ? property.price.toLocaleString() + ' €' : 'Price not available'}</p>
+        `;
+        
+        if (property.size) {
+            content += `<p>${property.size} m² - ${property.property_type || 'Property'}</p>`;
+        }
+        
+        if (property.investment_score) {
+            const scoreClass = property.investment_score >= 70 ? 'success' : 
+                              (property.investment_score >= 50 ? 'warning' : 'danger');
+            
+            content += `
+                <p>Investment Score: 
+                    <span class="text-${scoreClass} fw-bold">${property.investment_score}/100</span>
+                </p>
+            `;
+        }
+        
+        content += `
+                <button class="btn btn-sm btn-primary mt-2" onclick="getPropertyDetails('${property.id}', '${property.source}')">
+                    View Details
+                </button>
+            </div>
+        `;
+        
+        return content;
+    }
+    
+    // Load investment opportunities
+    function loadOpportunities(limit = 6, skip = 0) {
+        // Show loading spinner if first load
+        if (skip === 0) {
+            document.getElementById('opportunities-container').innerHTML = `
+                <div class="loading-spinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Build filter parameters
+        const params = new URLSearchParams();
+        if (currentCity) params.append('city', currentCity);
+        if (currentNeighborhood) params.append('neighborhood', currentNeighborhood);
+        
+        const propertyType = document.getElementById('property-type-select').value;
+        if (propertyType) params.append('property_type', propertyType);
+        
+        const operationType = document.getElementById('operation-type-select').value;
+        if (operationType) params.append('operation_type', operationType);
+        
+        const minScore = document.getElementById('min-investment-score').value;
+        params.append('min_score', minScore);
+        
+        // Fetch opportunities
+        fetch(`/api/investment/opportunities?${params.toString()}&limit=${limit}&skip=${skip}`)
+            .then(response => response.json())
+            .then(data => {
+                // Clear loading spinner if first load
+                if (skip === 0) {
+                    document.getElementById('opportunities-container').innerHTML = '';
+                    opportunities = data;
+                } else {
+                    opportunities = opportunities.concat(data);
+                }
+                
+                // Render opportunities
+                data.forEach(opportunity => {
+                    renderOpportunityCard(opportunity);
+                });
+                
+                // Hide load more button if no more data
+                if (data.length < limit) {
+                    document.getElementById('load-more-opportunities').style.display = 'none';
+                } else {
+                    document.getElementById('load-more-opportunities').style.display = 'inline-block';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading opportunities:', error);
+                document.getElementById('opportunities-container').innerHTML = `
+                    <div class="col-12 text-center">
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Error loading investment opportunities
+                        </div>
+                    </div>
+                `;
+            });
+    }
+    
+    // Render opportunity card
+    function renderOpportunityCard(opportunity) {
+        const opportunitiesContainer = document.getElementById('opportunities-container');
+        
+        // Determine score class
+        const scoreClass = opportunity.investment_score >= 70 ? 'success' : 
+                          (opportunity.investment_score >= 50 ? 'warning' : 'danger');
+        
+        // Calculate price difference label
+        let priceDiffLabel = '';
+        let priceDiffClass = '';
+        
+        if (opportunity.price_difference) {
+            if (opportunity.price_difference > 0) {
+                priceDiffLabel = `${opportunity.price_difference}% below average`;
+                priceDiffClass = 'success';
+            } else {
+                priceDiffLabel = `${Math.abs(opportunity.price_difference)}% above average`;
+                priceDiffClass = 'danger';
+            }
+        }
+        
+        // Create card
+        const card = document.createElement('div');
+        card.className = 'col-md-4 col-sm-6 mb-4';
+        card.innerHTML = `
+            <div class="card h-100 property-card">
+                <div class="opportunity-badge bg-${scoreClass}">
+                    ${opportunity.investment_score}/100
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">${opportunity.title || 'Investment Opportunity'}</h5>
+                    <p class="property-price">${opportunity.price ? opportunity.price.toLocaleString() + ' €' : 'Price not available'}</p>
+                    
+                    ${opportunity.price_per_sqm ? `
+                    <p>
+                        ${opportunity.price_per_sqm.toLocaleString()} €/m² 
+                        ${priceDiffLabel ? `<span class="badge bg-${priceDiffClass}">${priceDiffLabel}</span>` : ''}
+                    </p>
+                    ` : ''}
+                    
+                    <div class="property-features">
+                        ${opportunity.size ? `
+                        <div class="property-feature">
+                            <i class="fas fa-ruler-combined"></i> ${opportunity.size} m²
+                        </div>
+                        ` : ''}
+                        
+                        ${opportunity.property_type ? `
+                        <div class="property-feature">
+                            <i class="fas fa-home"></i> ${capitalizeFirstLetter(opportunity.property_type)}
+                        </div>
+                        ` : ''}
+                        
+                        ${opportunity.city ? `
+                        <div class="property-feature">
+                            <i class="fas fa-map-marker-alt"></i> ${opportunity.city}
+                        </div>
+                        ` : ''}
+                    </div>
+                    
+                    ${opportunity.estimated_roi ? `
+                    <div class="mt-3">
+                        <span class="badge bg-info">Estimated ROI: ${opportunity.estimated_roi}%</span>
+                    </div>
+                    ` : ''}
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-primary btn-sm" onclick="getPropertyDetails('${opportunity.property_id}', '${opportunity.source}')">
+                        <i class="fas fa-search me-1"></i> View Details
+                    </button>
+                    ${opportunity.url ? `
+                    <a href="${opportunity.url}" target="_blank" class="btn btn-outline-secondary btn-sm float-end">
+                        <i class="fas fa-external-link-alt"></i>
+                    </a>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+        
+        opportunitiesContainer.appendChild(card);
+    }
+    
+    // Load properties
+    function loadProperties(limit = 6, skip = 0) {
+        // Show loading spinner if first load
+        if (skip === 0) {
+            document.getElementById('properties-container').innerHTML = `
+                <div class="loading-spinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Build filter parameters
+        const params = new URLSearchParams();
+        if (currentCity) params.append('city', currentCity);
+        if (currentNeighborhood) params.append('neighborhood', currentNeighborhood);
+        
+        const propertyType = document.getElementById('property-type-select').value;
+        if (propertyType) params.append('property_type', propertyType);
+        
+        const operationType = document.getElementById('operation-type-select').value;
+        if (operationType) params.append('operation_type', operationType);
+        
+        const minPrice = document.getElementById('min-price').value;
+        if (minPrice) params.append('min_price', minPrice);
+        
+        const maxPrice = document.getElementById('max-price').value;
+        if (maxPrice) params.append('max_price', maxPrice);
+        
+        // Fetch properties
+        fetch(`/api/properties?${params.toString()}&limit=${limit}&skip=${skip}`)
+            .then(response => response.json())
+            .then(data => {
+                // Clear loading spinner if first load
+                if (skip === 0) {
+                    document.getElementById('properties-container').innerHTML = '';
+                    properties = data;
+                } else {
+                    properties = properties.concat(data);
+                }
+                
+                // Render properties
+                data.forEach(property => {
+                    renderPropertyCard(property);
+                });
+                
+                // Hide load more button if no more data
+                if (data.length < limit) {
+                    document.getElementById('load-more-properties').style.display = 'none';
+                } else {
+                    document.getElementById('load-more-properties').style.display = 'inline-block';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading properties:', error);
+                document.getElementById('properties-container').innerHTML = `
+                    <div class="col-12 text-center">
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Error loading properties
+                        </div>
+                    </div>
+                `;
+            });
+    }
+    
+    // Render property card
+    function renderPropertyCard(property) {
+        const propertiesContainer = document.getElementById('properties-container');
+        
+        // Determine if property has investment score
+        let scoreHtml = '';
+        if (property.investment_score !== undefined) {
+            const scoreClass = property.investment_score >= 70 ? 'success' : 
+                             (property.investment_score >= 50 ? 'warning' : 'danger');
+            
+            scoreHtml = `
+                <div class="opportunity-badge bg-${scoreClass}">
+                    ${property.investment_score}/100
+                </div>
+            `;
+        }
+        
+        // Create card
+        const card = document.createElement('div');
+        card.className = 'col-md-4 col-sm-6 mb-4';
+        card.innerHTML = `
+            <div class="card h-100 property-card">
+                ${scoreHtml}
+                <div class="card-body">
+                    <h5 class="card-title">${property.title || 'Property'}</h5>
+                    <p class="property-price">${property.price ? property.price.toLocaleString() + ' €' : 'Price not available'}</p>
+                    
+                    ${property.price_per_sqm ? `
+                    <p>${property.price_per_sqm.toLocaleString()} €/m²</p>
+                    ` : ''}
+                    
+                    <div class="property-features">
+                        ${property.size ? `
+                        <div class="property-feature">
+                            <i class="fas fa-ruler-combined"></i> ${property.size} m²
+                        </div>
+                        ` : ''}
+                        
+                        ${property.rooms ? `
+                        <div class="property-feature">
+                            <i class="fas fa-bed"></i> ${property.rooms} rooms
+                        </div>
+                        ` : ''}
+                        
+                        ${property.bathrooms ? `
+                        <div class="property-feature">
+                            <i class="fas fa-bath"></i> ${property.bathrooms} baths
+                        </div>
+                        ` : ''}
+                    </div>
+                    
+                    <p class="mt-2">
+                        <i class="fas fa-map-marker-alt"></i> 
+                        ${property.city ? property.city : ''}
+                        ${property.neighborhood ? ', ' + property.neighborhood : ''}
+                    </p>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-primary btn-sm" onclick="getPropertyDetails('${property.id}', '${property.source}')">
+                        <i class="fas fa-search me-1"></i> View Details
+                    </button>
+                    ${property.url ? `
+                    <a href="${property.url}" target="_blank" class="btn btn-outline-secondary btn-sm float-end">
+                        <i class="fas fa-external-link-alt"></i>
+                    </a>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+        
+        propertiesContainer.appendChild(card);
+    }
+    
+    // Get property details and show modal
+    function getPropertyDetails(propertyId, source) {
+        fetch(`/api/properties/${propertyId}?source=${source}`)
+            .then(response => response.json())
+            .then(property => {
+                // Set modal title and description
+                document.getElementById('modal-property-title').textContent = property.title || 'Property Details';
+                document.getElementById('modal-property-description').textContent = property.description || 'No description available';
+                
+                // Set price
+                document.getElementById('modal-property-price').textContent = 
+                    property.price ? property.price.toLocaleString() + ' €' : 'Price not available';
+                
+                // Set features
+                let featuresHtml = '<div class="row">';
+                
+                if (property.size) {
+                    featuresHtml += `
+                        <div class="col-md-4 mb-2">
+                            <i class="fas fa-ruler-combined me-2"></i> ${property.size} m²
+                        </div>
+                    `;
+                }
+                
+                if (property.rooms) {
+                    featuresHtml += `
+                        <div class="col-md-4 mb-2">
+                            <i class="fas fa-bed me-2"></i> ${property.rooms} rooms
+                        </div>
+                    `;
+                }
+                
+                if (property.bathrooms) {
+                    featuresHtml += `
+                        <div class="col-md-4 mb-2">
+                            <i class="fas fa-bath me-2"></i> ${property.bathrooms} baths
+                        </div>
+                    `;
+                }
+                
+                if (property.property_type) {
+                    featuresHtml += `
+                        <div class="col-md-4 mb-2">
+                            <i class="fas fa-home me-2"></i> ${capitalizeFirstLetter(property.property_type)}
+                        </div>
+                    `;
+                }
+                
+                if (property.floor !== undefined && property.floor !== null) {
+                    featuresHtml += `
+                        <div class="col-md-4 mb-2">
+                            <i class="fas fa-building me-2"></i> Floor ${property.floor}
+                        </div>
+                    `;
+                }
+                
+                if (property.has_elevator !== undefined) {
+                    featuresHtml += `
+                        <div class="col-md-4 mb-2">
+                            <i class="fas fa-elevator me-2"></i> ${property.has_elevator ? 'Elevator' : 'No elevator'}
+                        </div>
+                    `;
+                }
+                
+                featuresHtml += '</div>';
+                document.getElementById('modal-property-features').innerHTML = featuresHtml;
+                
+                // Set location
+                let locationHtml = '';
+                if (property.address) locationHtml += property.address + '<br>';
+                if (property.neighborhood) locationHtml += property.neighborhood + ', ';
+                if (property.city) locationHtml += property.city;
+                if (property.province && property.province !== property.city) locationHtml += ', ' + property.province;
+                if (property.postal_code) locationHtml += ' (' + property.postal_code + ')';
+                
+                document.getElementById('modal-property-location').innerHTML = locationHtml;
+                
+                // Set investment score
+                if (property.investment_score !== undefined) {
+                    const scoreClass = property.investment_score >= 70 ? 'score-high' : 
+                                      (property.investment_score >= 50 ? 'score-medium' : 'score-low');
+                    
+                    document.getElementById('modal-investment-score').textContent = property.investment_score;
+                    document.getElementById('modal-investment-score').className = `investment-score ${scoreClass}`;
+                    
+                    // Set progress bar
+                    const scoreBar = document.getElementById('modal-score-bar');
+                    scoreBar.style.width = `${property.investment_score}%`;
+                    
+                    if (property.investment_score >= 70) {
+                        scoreBar.className = 'progress-bar bg-success';
+                    } else if (property.investment_score >= 50) {
+                        scoreBar.className = 'progress-bar bg-warning';
+                    } else {
+                        scoreBar.className = 'progress-bar bg-danger';
+                    }
+                } else {
+                    document.getElementById('modal-investment-score').textContent = 'N/A';
+                    document.getElementById('modal-investment-score').className = 'investment-score';
+                    document.getElementById('modal-score-bar').style.width = '0%';
+                }
+                
+                // Set investment metrics
+                let metricsHtml = '';
+                
+                if (property.price_per_sqm) {
+                    metricsHtml += `
+                        <div class="investment-metric">
+                            <span class="investment-metric-label">Price per m²</span>
+                            <span class="investment-metric-value">${property.price_per_sqm.toLocaleString()} €</span>
+                        </div>
+                    `;
+                }
+                
+                if (property.days_listed !== undefined) {
+                    metricsHtml += `
+                        <div class="investment-metric">
+                            <span class="investment-metric-label">Days on market</span>
+                            <span class="investment-metric-value">${property.days_listed}</span>
+                        </div>
+                    `;
+                }
+                
+                if (property.year_built) {
+                    metricsHtml += `
+                        <div class="investment-metric">
+                            <span class="investment-metric-label">Year built</span>
+                            <span class="investment-metric-value">${property.year_built}</span>
+                        </div>
+                    `;
+                }
+                
+                // Add source information
+                metricsHtml += `
+                    <div class="investment-metric">
+                        <span class="investment-metric-label">Source</span>
+                        <span class="investment-metric-value">${capitalizeFirstLetter(property.source)}</span>
+                    </div>
+                `;
+                
+                document.getElementById('modal-investment-metrics').innerHTML = metricsHtml;
+                
+                // Set property URL
+                const urlElement = document.getElementById('modal-property-url');
+                if (property.url) {
+                    urlElement.href = property.url;
+                    urlElement.style.display = 'inline-block';
+                } else {
+                    urlElement.style.display = 'none';
+                }
+                
+                // Show modal
+                const propertyModal = new bootstrap.Modal(document.getElementById('property-detail-modal'));
+                propertyModal.show();
+            })
+            .catch(error => {
+                console.error('Error loading property details:', error);
+                alert('Error loading property details. Please try again.');
+            });
+    }
+    
+    // Set up event listeners
+    function setupEventListeners() {
+        // City select change
+        document.getElementById('city-select').addEventListener('change', function() {
+            currentCity = this.value;
+            currentNeighborhood = '';
+            loadNeighborhoods(currentCity);
+        });
+        
+        // Neighborhood select change
+        document.getElementById('neighborhood-select').addEventListener('change', function() {
+            currentNeighborhood = this.value;
+        });
+        
+        // Investment score slider change
+        document.getElementById('min-investment-score').addEventListener('input', function() {
+            document.getElementById('investment-score-value').textContent = this.value;
+        });
+        
+        // Filter form submit
+        document.getElementById('filter-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            currentCity = document.getElementById('city-select').value;
+            currentNeighborhood = document.getElementById('neighborhood-select').value;
+            
+            // Reload all data with new filters
+            loadStatistics();
+            loadPropertiesForMap();
+            loadOpportunities();
+            loadProperties();
+        });
+        
+        // Reset filters button
+        document.getElementById('reset-filters').addEventListener('click', function() {
+            document.getElementById('filter-form').reset();
+            currentCity = '';
+            currentNeighborhood = '';
+            document.getElementById('neighborhood-select').disabled = true;
+            document.getElementById('investment-score-value').textContent = '50';
+            
+            // Reload all data with reset filters
+            loadStatistics();
+            loadPropertiesForMap();
+            loadOpportunities();
+            loadProperties();
+        });
+        
+        // Heatmap toggle
+        document.getElementById('show-heatmap').addEventListener('change', function() {
+            if (heatLayer) {
+                if (this.checked) {
+                    map.addLayer(heatLayer);
+                } else {
+                    map.removeLayer(heatLayer);
+                }
+            }
+        });
+        
+        // Load more opportunities button
+        document.getElementById('load-more-opportunities').addEventListener('click', function() {
+            loadOpportunities(6, opportunities.length);
+        });
+        
+        // Load more properties button
+        document.getElementById('load-more-properties').addEventListener('click', function() {
+            loadProperties(6, properties.length);
+        });
+    }
+    
+    // Helper function to capitalize first letter
+    function capitalizeFirstLetter(string) {
+        if (!string) return '';
+        return string.charAt(0).toUpperCase() + string.slice(1);
+    }
+</script>
+{% endblock %}

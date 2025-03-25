@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Error - Real Estate Investment Analysis{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card bg-danger text-white">
+                <div class="card-header">
+                    <h3><i class="fas fa-exclamation-triangle me-2"></i> Error</h3>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">Something went wrong</h5>
+                    <p class="card-text">{{ error }}</p>
+                    <a href="/" class="btn btn-light mt-3">Return to Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

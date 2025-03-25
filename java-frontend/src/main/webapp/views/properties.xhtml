@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://xmlns.jcp.org/jsf/html"
+      xmlns:f="http://xmlns.jcp.org/jsf/core"
+      xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+      xmlns:p="http://primefaces.org/ui">
+
+<ui:composition template="/templates/template.xhtml">
+    <ui:define name="title">Properties - Real Estate Investment Analysis</ui:define>
+    
+    <ui:define name="content">
+        <div class="page-header p-4 text-center text-white mb-4">
+            <h1><i class="pi pi-list mr-2"></i> Property Listings</h1>
+            <p class="lead">Browse and search for properties in the Spanish real estate market</p>
+        </div>
+        
+        <!-- Filters Section -->
+        <div class="card mb-4 filter-section">
+            <h3 class="mb-3"><i class="pi pi-filter mr-2"></i> Search Filters</h3>
+            <h:form id="filter-form">
+                <div class="p-grid p-mb-3">
+                    <div class="p-col-12 p-md-3">
+                        <p:outputLabel for="city" value="City" />
+                        <p:selectOneMenu id="city" value="#{propertyBean.city}" style="width: 100%">
+                            <f:selectItem itemLabel="Select a city" itemValue="" />
+                            <f:selectItems value="#{propertyBean.cities}" />
+                            <p:ajax update="neighborhood" listener="#{propertyBean.loadNeighborhoods}" />
+                        </p:selectOneMenu>
+                    </div>
+                    <div class="p-col-12 p-md-3">
+                        <p:outputLabel for="neighborhood" value="Neighborhood" />
+                        <p:selectOneMenu id="neighborhood" value="#{propertyBean.neighborhood}" style="width: 100%"
+                                         disabled="#{empty propertyBean.city}">
+                            <f:selectItem itemLabel="Select a neighborhood" itemValue="" />
+                            <f:selectItems value="#{propertyBean.neighborhoods}" />
+                        </p:selectOneMenu>
+                    </div>
+                    <div class="p-col-12 p-md-3">
+                        <p:outputLabel for="propertyType" value="Property Type" />
+                        <p:selectOneMenu id="propertyType" value="#{propertyBean.propertyType}" style="width: 100%">
+                            <f:selectItem itemLabel="All types" itemValue="" />
+                            <f:selectItem itemLabel="Apartment" itemValue="apartment" />
+                            <f:selectItem itemLabel="House" itemValue="house" />
+                            <f:selectItem itemLabel="Penthouse" itemValue="penthouse" />
+                            <f:selectItem itemLabel="Studio" itemValue="studio" />
+                        </p:selectOneMenu>
+                    </div>
+                    <div class="p-col-12 p-md-3">
+                        <p:outputLabel for="operationType" value="Operation" />
+                        <p:selectOneMenu id="operationType" value="#{propertyBean.operationType}" style="width: 100%">
+                            <f:selectItem itemLabel="For Sale" itemValue="sale" />
+                            <f:selectItem itemLabel="For Rent" itemValue="rent" />
+                        </p:selectOneMenu>
+                    </div>
+                    <div class="p-col-12 p-md-3">
+                        <p:outputLabel for="priceRange" value="Price Range (€)" />
+                        <div class="p-inputgroup">
+                            <p:inputNumber id="minPrice" value="#{propertyBean.minPrice}" placeholder="Min €" symbol="€" symbolPosition="s" decimalPlaces="0" />
+                            <span class="p-inputgroup-addon">-</span>
+                            <p:inputNumber id="maxPrice" value="#{propertyBean.maxPrice}" placeholder="Max €" symbol="€" symbolPosition="s" decimalPlaces="0" />
+                        </div>
+                    </div>
+                    <div class="p-col-12 p-md-3">
+                        <p:outputLabel for="sizeRange" value="Size Range (m²)" />
+                        <div class="p-inputgroup">
+                            <p:inputNumber id="minSize" value="#{propertyBean.minSize}" placeholder="Min m²" symbol="m²" symbolPosition="s" decimalPlaces="0" />
+                            <span class="p-inputgroup-addon">-</span>
+                            <p:inputNumber id="maxSize" value="#{propertyBean.maxSize}" placeholder="Max m²" symbol="m²" symbolPosition="s" decimalPlaces="0" />
+                        </div>
+                    </div>
+                    <div class="p-col-12 p-md-3">
+                        <p:outputLabel for="minRooms" value="Minimum Rooms" />
+                        <p:spinner id="minRooms" value="#{propertyBean.minRooms}" min="0" style="width: 100%" />
+                    </div>
+                    <div class="p-col-12 p-md-3">
+                        <p:outputLabel for="investmentScore" value="Min Investment Score: #{propertyBean.minInvestmentScore}" />
+                        <p:slider id="investmentScore" value="#{propertyBean.minInvestmentScore}" min="0" max="100" 
+                                 style="width: 100%" onSlideEnd="#{propertyBean.onInvestmentScoreChange}" />
+                    </div>
+                    <div class="p-col-12 text-center p-mt-3">
+                        <p:commandButton value="Search" icon="pi pi-search" action="#{propertyBean.applyFilters}" 
+                                        styleClass="p-mr-2" update="@form :properties-panel" />
+                        <p:commandButton value="Reset" icon="pi pi-undo" type="reset" action="#{propertyBean.resetFilters}" 
+                                        styleClass="p-ml-2 ui-button-secondary" update="@form :properties-panel" />
+                    </div>
+                </div>
+            </h:form>
+        </div>
+        
+        <!-- Properties Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="p-d-flex p-jc-between p-ai-center">
+                    <h3><i class="pi pi-home mr-2"></i> Properties</h3>
+                    <div>
+                        <span class="mr-2">Total: #{propertyBean.totalProperties} properties</span>
+                        <p:button value="View on Map" outcome="map" icon="pi pi-map" styleClass="ui-button-secondary" />
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <p:outputPanel id="properties-panel">
+                    <p:dataView var="property" value="#{propertyBean.properties}" layout="grid"
+                               rows="12" paginator="true" gridIcon="pi pi-th-large" listIcon="pi pi-bars"
+                               paginatorTemplate="{CurrentPageReport} {FirstPageLink} {PreviousPageLink} {PageLinks} {NextPageLink} {LastPageLink} {RowsPerPageDropdown}"
+                               rowsPerPageTemplate="12,24,36" emptyMessage="No properties found with current filters.">
+                               
+                        <p:dataViewGridItem>
+                            <div class="property-card">
+                                <ui:fragment rendered="#{property.investmentScore != null}">
+                                    <div class="investment-badge bg-#{property.investmentScoreClass}">
+                                        <h:outputText value="#{property.investmentScore}">
+                                            <f:convertNumber pattern="#,##0" locale="es" />
+                                        </h:outputText>/100
+                                    </div>
+                                </ui:fragment>
+                                <div class="card-body">
+                                    <h4 class="card-title">#{property.title}</h4>
+                                    <p class="property-price">
+                                        <h:outputText value="#{property.price}">
+                                            <f:convertNumber pattern="#,##0 €" locale="es" />
+                                        </h:outputText>
+                                    </p>
+                                    
+                                    <ui:fragment rendered="#{property.pricePerSqm != null}">
+                                        <p>
+                                            <h:outputText value="#{property.pricePerSqm}">
+                                                <f:convertNumber pattern="#,##0 €/m²" locale="es" />
+                                            </h:outputText>
+                                        </p>
+                                    </ui:fragment>
+                                    
+                                    <div class="property-features">
+                                        <ui:fragment rendered="#{property.size != null}">
+                                            <div class="property-feature">
+                                                <i class="pi pi-th-large"></i> #{property.size} m²
+                                            </div>
+                                        </ui:fragment>
+                                        
+                                        <ui:fragment rendered="#{property.rooms != null}">
+                                            <div class="property-feature">
+                                                <i class="pi pi-tablet"></i> #{property.rooms} rooms
+                                            </div>
+                                        </ui:fragment>
+                                        
+                                        <ui:fragment rendered="#{property.bathrooms != null}">
+                                            <div class="property-feature">
+                                                <i class="pi pi-inbox"></i> #{property.bathrooms} baths
+                                            </div>
+                                        </ui:fragment>
+                                    </div>
+                                    
+                                    <p class="mt-2">
+                                        <i class="pi pi-map-marker"></i> #{property.formattedLocation}
+                                    </p>
+                                </div>
+                                <div class="card-footer">
+                                    <p:commandButton value="View Details" icon="pi pi-search" 
+                                                    oncomplete="PF('propertyDetailDialog').show()"
+                                                    update=":propertyDetailForm"
+                                                    styleClass="p-button-sm">
+                                        <f:setPropertyActionListener value="#{property.id}" 
+                                                                    target="#{propertyBean.selectedPropertyId}" />
+                                        <f:setPropertyActionListener value="#{property.source}" 
+                                                                    target="#{propertyBean.selectedPropertySource}" />
+                                    </p:commandButton>
+                                    <ui:fragment rendered="#{not empty property.url}">
+                                        <a href="#{property.url}" target="_blank" class="btn btn-secondary btn-sm float-right">
+                                            <i class="pi pi-external-link"></i>
+                                        </a>
+                                    </ui:fragment>
+                                </div>
+                            </div>
+                        </p:dataViewGridItem>
+                        
+                        <p:dataViewListItem>
+                            <div class="p-grid property-list-item">
+                                <div class="p-col-12 p-md-9">
+                                    <div class="p-grid">
+                                        <div class="p-col-12">
+                                            <h4>#{property.title}</h4>
+                                            <p class="property-price text-success">
+                                                <h:outputText value="#{property.price}">
+                                                    <f:convertNumber pattern="#,##0 €" locale="es" />
+                                                </h:outputText>
+                                                <ui:fragment rendered="#{property.pricePerSqm != null}">
+                                                    <span class="text-muted ml-2">
+                                                        <h:outputText value="#{property.pricePerSqm}">
+                                                            <f:convertNumber pattern="#,##0 €/m²" locale="es" />
+                                                        </h:outputText>
+                                                    </span>
+                                                </ui:fragment>
+                                            </p>
+                                        </div>
+                                        
+                                        <div class="p-col-12 p-md-8">
+                                            <p>
+                                                <i class="pi pi-map-marker mr-2"></i> #{property.formattedLocation}
+                                            </p>
+                                            
+                                            <div class="property-features">
+                                                <ui:fragment rendered="#{property.size != null}">
+                                                    <span class="property-feature mr-3">
+                                                        <i class="pi pi-th-large mr-1"></i> #{property.size} m²
+                                                    </span>
+                                                </ui:fragment>
+                                                
+                                                <ui:fragment rendered="#{property.rooms != null}">
+                                                    <span class="property-feature mr-3">
+                                                        <i class="pi pi-tablet mr-1"></i> #{property.rooms} rooms
+                                                    </span>
+                                                </ui:fragment>
+                                                
+                                                <ui:fragment rendered="#{property.bathrooms != null}">
+                                                    <span class="property-feature mr-3">
+                                                        <i class="pi pi-inbox mr-1"></i> #{property.bathrooms} baths
+                                                    </span>
+                                                </ui:fragment>
+                                                
+                                                <ui:fragment rendered="#{property.propertyType != null}">
+                                                    <span class="property-feature">
+                                                        <i class="pi pi-home mr-1"></i> #{property.formattedPropertyType}
+                                                    </span>
+                                                </ui:fragment>
+                                            </div>
+                                            
+                                            <p class="property-description mt-2">
+                                                <h:outputText value="#{property.description}" rendered="#{not empty property.description}">
+                                                    <f:converter converterId="javax.faces.Long"/>
+                                                </h:outputText>
+                                            </p>
+                                        </div>
+                                        
+                                        <div class="p-col-12 p-md-4">
+                                            <ui:fragment rendered="#{property.investmentScore != null}">
+                                                <div class="investment-score-panel text-center">
+                                                    <h6>Investment Score</h6>
+                                                    <div class="investment-score #{property.investmentScoreClass}">
+                                                        <h:outputText value="#{property.investmentScore}">
+                                                            <f:convertNumber pattern="#,##0" locale="es" />
+                                                        </h:outputText>/100
+                                                    </div>
+                                                    <div class="progress mt-2">
+                                                        <div class="progress-bar bg-#{property.investmentScoreClass}" 
+                                                             style="width: #{property.investmentScore}%"></div>
+                                                    </div>
+                                                </div>
+                                            </ui:fragment>
+                                            
+                                            <ui:fragment rendered="#{property.daysListed != null}">
+                                                <div class="mt-3">
+                                                    <i class="pi pi-calendar mr-2"></i> #{property.daysListed} days on market
+                                                </div>
+                                            </ui:fragment>
+                                            
+                                            <div class="mt-2">
+                                                <i class="pi pi-globe mr-2"></i> #{property.capitalizedSource}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="p-col-12 p-md-3 p-d-flex p-flex-column p-jc-center p-ai-center">
+                                    <p:commandButton value="View Details" icon="pi pi-search" 
+                                                    oncomplete="PF('propertyDetailDialog').show()"
+                                                    update=":propertyDetailForm"
+                                                    styleClass="p-button-sm p-mb-2 w-100">
+                                        <f:setPropertyActionListener value="#{property.id}" 
+                                                                    target="#{propertyBean.selectedPropertyId}" />
+                                        <f:setPropertyActionListener value="#{property.source}" 
+                                                                    target="#{propertyBean.selectedPropertySource}" />
+                                    </p:commandButton>
+                                    
+                                    <ui:fragment rendered="#{not empty property.url}">
+                                        <a href="#{property.url}" target="_blank" class="ui-button ui-button-secondary ui-button-sm w-100">
+                                            <i class="pi pi-external-link mr-2"></i> Source Website
+                                        </a>
+                                    </ui:fragment>
+                                </div>
+                            </div>
+                        </p:dataViewListItem>
+                        
+                    </p:dataView>
+                </p:outputPanel>
+            </div>
+        </div>
+        
+        <!-- Property Detail Dialog -->
+        <p:dialog header="Property Details" widgetVar="propertyDetailDialog" modal="true" 
+                 width="900" showEffect="fade" hideEffect="fade" responsive="true">
+            <h:form id="propertyDetailForm">
+                <p:outputPanel id="propertyDetail" rendered="#{not empty propertyBean.selectedProperty}">
+                    <div class="p-grid">
+                        <div class="p-col-12 p-md-8">
+                            <h3 class="text-success mb-3">
+                                <h:outputText value="#{propertyBean.selectedProperty.price}">
+                                    <f:convertNumber pattern="#,##0 €" locale="es" />
+                                </h:outputText>
+                            </h3>
+                            
+                            <!-- Property Features -->
+                            <div class="p-grid mb-3">
+                                <ui:fragment rendered="#{propertyBean.selectedProperty.size != null}">
+                                    <div class="p-col-4 mb-2">
+                                        <i class="pi pi-th-large mr-2"></i> #{propertyBean.selectedProperty.size} m²
+                                    </div>
+                                </ui:fragment>
+                                
+                                <ui:fragment rendered="#{propertyBean.selectedProperty.rooms != null}">
+                                    <div class="p-col-4 mb-2">
+                                        <i class="pi pi-tablet mr-2"></i> #{propertyBean.selectedProperty.rooms} rooms
+                                    </div>
+                                </ui:fragment>
+                                
+                                <ui:fragment rendered="#{propertyBean.selectedProperty.bathrooms != null}">
+                                    <div class="p-col-4 mb-2">
+                                        <i class="pi pi-inbox mr-2"></i> #{propertyBean.selectedProperty.bathrooms} baths
+                                    </div>
+                                </ui:fragment>
+                                
+                                <ui:fragment rendered="#{propertyBean.selectedProperty.propertyType != null}">
+                                    <div class="p-col-4 mb-2">
+                                        <i class="pi pi-home mr-2"></i> #{propertyBean.selectedProperty.formattedPropertyType}
+                                    </div>
+                                </ui:fragment>
+                                
+                                <ui:fragment rendered="#{propertyBean.selectedProperty.floor != null}">
+                                    <div class="p-col-4 mb-2">
+                                        <i class="pi pi-building mr-2"></i> Floor #{propertyBean.selectedProperty.floor}
+                                    </div>
+                                </ui:fragment>
+                                
+                                <ui:fragment rendered="#{propertyBean.selectedProperty.hasElevator != null}">
+                                    <div class="p-col-4 mb-2">
+                                        <i class="pi pi-arrow-up mr-2"></i> 
+                                        <h:outputText value="Elevator" rendered="#{propertyBean.selectedProperty.hasElevator}" />
+                                        <h:outputText value="No elevator" rendered="#{not propertyBean.selectedProperty.hasElevator}" />
+                                    </div>
+                                </ui:fragment>
+                            </div>
+                            
+                            <!-- Description -->
+                            <h5>Description</h5>
+                            <p class="mb-4">#{propertyBean.selectedProperty.description}</p>
+                            
+                            <!-- Location -->
+                            <h5>Location</h5>
+                            <p>#{propertyBean.selectedProperty.formattedLocation}</p>
+                        </div>
+                        
+                        <div class="p-col-12 p-md-4">
+                            <!-- Investment Score -->
+                            <div class="card mb-3">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">Investment Score</h5>
+                                </div>
+                                <div class="card-body text-center">
+                                    <ui:fragment rendered="#{propertyBean.selectedProperty.investmentScore != null}">
+                                        <div class="investment-score #{propertyBean.selectedProperty.investmentScoreClass} mb-2">
+                                            <h:outputText value="#{propertyBean.selectedProperty.investmentScore}">
+                                                <f:convertNumber pattern="#,##0" locale="es" />
+                                            </h:outputText>
+                                        </div>
+                                        <div class="progress mb-3">
+                                            <div class="progress-bar bg-#{propertyBean.getInvestmentScoreClass(propertyBean.selectedProperty.investmentScore)}" 
+                                                 style="width: #{propertyBean.selectedProperty.investmentScore}%"></div>
+                                        </div>
+                                    </ui:fragment>
+                                    <ui:fragment rendered="#{propertyBean.selectedProperty.investmentScore == null}">
+                                        <div class="investment-score mb-2">N/A</div>
+                                    </ui:fragment>
+                                </div>
+                            </div>
+                            
+                            <!-- Investment Metrics -->
+                            <ui:fragment rendered="#{not empty propertyBean.propertyAnalysis}">
+                                <div class="card">
+                                    <div class="card-header bg-info text-white">
+                                        <h5 class="mb-0">Investment Metrics</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <ui:fragment rendered="#{propertyBean.propertyAnalysis.investmentMetrics != null}">
+                                            <ui:fragment rendered="#{propertyBean.propertyAnalysis.investmentMetrics.priceToValueRatio != null}">
+                                                <div class="investment-metric">
+                                                    <span class="investment-metric-label">Price to Value Ratio</span>
+                                                    <span class="investment-metric-value">
+                                                        <h:outputText value="#{propertyBean.propertyAnalysis.investmentMetrics.priceToValueRatio}">
+                                                            <f:convertNumber pattern="#,##0.00" locale="es" />
+                                                        </h:outputText>
+                                                    </span>
+                                                </div>
+                                            </ui:fragment>
+                                            
+                                            <ui:fragment rendered="#{propertyBean.propertyAnalysis.investmentMetrics.potentialAppreciation != null}">
+                                                <div class="investment-metric">
+                                                    <span class="investment-metric-label">Potential Appreciation</span>
+                                                    <span class="investment-metric-value">
+                                                        <h:outputText value="#{propertyBean.propertyAnalysis.investmentMetrics.potentialAppreciation}">
+                                                            <f:convertNumber pattern="#,##0.0%" locale="es" />
+                                                        </h:outputText>
+                                                    </span>
+                                                </div>
+                                            </ui:fragment>
+                                            
+                                            <ui:fragment rendered="#{propertyBean.propertyAnalysis.investmentMetrics.estimatedRentalYield != null}">
+                                                <div class="investment-metric">
+                                                    <span class="investment-metric-label">Estimated Rental Yield</span>
+                                                    <span class="investment-metric-value">
+                                                        <h:outputText value="#{propertyBean.propertyAnalysis.investmentMetrics.estimatedRentalYield}">
+                                                            <f:convertNumber pattern="#,##0.0%" locale="es" />
+                                                        </h:outputText>
+                                                    </span>
+                                                </div>
+                                            </ui:fragment>
+                                            
+                                            <ui:fragment rendered="#{propertyBean.propertyAnalysis.investmentMetrics.liquidityScore != null}">
+                                                <div class="investment-metric">
+                                                    <span class="investment-metric-label">Liquidity Score</span>
+                                                    <span class="investment-metric-value">
+                                                        <h:outputText value="#{propertyBean.propertyAnalysis.investmentMetrics.liquidityScore}">
+                                                            <f:convertNumber pattern="#,##0" locale="es" />
+                                                        </h:outputText>/100
+                                                    </span>
+                                                </div>
+                                            </ui:fragment>
+                                        </ui:fragment>
+                                        
+                                        <ui:fragment rendered="#{propertyBean.selectedProperty.pricePerSqm != null}">
+                                            <div class="investment-metric">
+                                                <span class="investment-metric-label">Price per m²</span>
+                                                <span class="investment-metric-value">
+                                                    <h:outputText value="#{propertyBean.selectedProperty.pricePerSqm}">
+                                                        <f:convertNumber pattern="#,##0 €" locale="es" />
+                                                    </h:outputText>
+                                                </span>
+                                            </div>
+                                        </ui:fragment>
+                                        
+                                        <ui:fragment rendered="#{propertyBean.selectedProperty.daysListed != null}">
+                                            <div class="investment-metric">
+                                                <span class="investment-metric-label">Days on market</span>
+                                                <span class="investment-metric-value">#{propertyBean.selectedProperty.daysListed}</span>
+                                            </div>
+                                        </ui:fragment>
+                                        
+                                        <div class="investment-metric">
+                                            <span class="investment-metric-label">Source</span>
+                                            <span class="investment-metric-value">#{propertyBean.selectedProperty.capitalizedSource}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </ui:fragment>
+                        </div>
+                    </div>
+                </p:outputPanel>
+                
+                <div class="dialog-footer">
+                    <ui:fragment rendered="#{not empty propertyBean.selectedProperty.url}">
+                        <a href="#{propertyBean.selectedProperty.url}" target="_blank" class="ui-button ui-button-info">
+                            <i class="pi pi-external-link mr-2"></i> View on Source Website
+                        </a>
+                    </ui:fragment>
+                    <p:commandButton value="Close" type="button" onclick="PF('propertyDetailDialog').hide()" styleClass="p-ml-2" />
+                </div>
+            </h:form>
+        </p:dialog>
+    </ui:define>
+</ui:composition>
+
+</html>
