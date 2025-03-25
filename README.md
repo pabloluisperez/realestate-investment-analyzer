@@ -1,84 +1,103 @@
-# Sistema de Análisis de Inversiones Inmobiliarias
+# Real Estate Investment Analysis System
 
-Este proyecto es un sistema completo para el análisis de inversiones inmobiliarias que incluye web scraping en Python y un frontend en Java con PrimeFaces.
+Este sistema consta de dos componentes principales:
+
+1. **Scraper Python**: Extrae datos de propiedades de sitios web inmobiliarios españoles (idealista.com, fotocasa.es, etc.), los almacena en MongoDB, realiza seguimiento de los cambios, y usa machine learning para identificar oportunidades de inversión.
+
+2. **Frontend Java PrimeFaces**: Muestra oportunidades de inversión en mapas interactivos basados en las regiones seleccionadas.
+
+## Arquitectura del Sistema
+
+![Arquitectura](docs/architecture.svg)
 
 ## Componentes
 
-El sistema consta de dos componentes principales:
+### 1. Módulo Scraper
 
-### 1. Backend de Web Scraping (Python)
+- **Spiders**: Implementados con Scrapy para extraer datos de diferentes portales inmobiliarios.
+- **Middleware**: Sistemas de rotación de proxies y user-agents para evitar bloqueos.
+- **Pipelines**: Procesamiento y análisis de los datos extraídos.
+- **Machine Learning**: Análisis de potencial de inversión basado en datos históricos y comparativos.
 
-- Extrae datos de propiedades de sitios web inmobiliarios españoles (idealista.com, fotocasa.es, etc.)
-- Almacena los datos en MongoDB (con soporte de fallback para PostgreSQL)
-- Realiza un seguimiento de listados nuevos y modificados
-- Utiliza algoritmos de aprendizaje automático para identificar oportunidades de inversión
+### 2. Módulo API
 
-### 2. Frontend (Java PrimeFaces)
+- **API REST**: Implementada con Flask para proporcionar acceso a los datos.
+- **Servicios**: Recuperación de propiedades, análisis de inversión, etc.
+- **Adaptador PostgreSQL**: Sistema de fallback cuando MongoDB no está disponible.
 
-- Consume los datos del backend a través de una API
-- Muestra oportunidades de inversión en mapas interactivos
-- Permite filtrar por regiones seleccionadas
-- Proporciona análisis detallado de cada propiedad
+### 3. Módulo Frontend
 
-## Estructura del Proyecto
-
-```
-.
-├── api/                       # API de Flask para acceder a los datos
-│   ├── services/              # Servicios para análisis y gestión de propiedades
-│   ├── static/                # Archivos estáticos
-│   ├── templates/             # Plantillas HTML
-│   ├── utils/                 # Utilidades, incluyendo conexión a BD
-│   ├── app.py                 # Aplicación principal de Flask
-│   ├── main.py                # Punto de entrada para la API
-│   └── models.py              # Modelos de datos
-├── scraper/                   # Web scraper basado en Scrapy
-│   ├── realestate/            # Proyecto Scrapy
-│   │   ├── spiders/           # Arañas para diferentes sitios web
-│   │   ├── utils/             # Utilidades para el scraping
-│   │   ├── items.py           # Definición de elementos a extraer
-│   │   ├── middlewares.py     # Middlewares para manejar proxies, etc.
-│   │   ├── pipelines.py       # Pipelines para procesar datos
-│   │   └── settings.py        # Configuración del scraper
-│   ├── main.py                # Punto de entrada para el scraper
-│   └── scheduler.py           # Programador de tareas
-├── java-frontend/             # Frontend Java con PrimeFaces (no incluido en el paquete actual)
-├── main.py                    # Punto de entrada principal del sistema
-├── pyproject.toml             # Configuración de Python
-└── README.md                  # Este archivo
-```
+- **Java PrimeFaces**: Interfaz de usuario rica e interactiva.
+- **Mapas Interactivos**: Visualización geoespacial de propiedades.
+- **Filtros**: Por ciudad, barrio, precio, tamaño, etc.
 
 ## Características
 
-- **Detección de propiedades nuevas/modificadas**: El sistema identifica automáticamente nuevos listados y cambios en listados existentes.
-- **Análisis de inversión**: Utiliza datos históricos para identificar propiedades con potencial de inversión.
-- **Visualización geoespacial**: Muestra propiedades en mapas interactivos con filtrado por zona.
-- **Conexión a base de datos flexible**: Utiliza MongoDB como base de datos principal con PostgreSQL como fallback.
-- **Técnicas anti-detección**: Implementa rotación de proxies y user agents para evitar ser bloqueado durante el scraping.
+- Web scraping con técnicas anti-detección
+- Seguimiento de nuevas propiedades y modificaciones
+- Análisis de oportunidades de inversión
+- Mapas interactivos con ubicaciones de propiedades
+- Filtrado por ciudad, barrio, precio, etc.
 
 ## Requisitos
 
-- Python 3.10+
-- MongoDB o PostgreSQL
-- Java 17+ (para el frontend)
+- Python 3.8+
+- Java 11+
+- MongoDB
+- PostgreSQL (como respaldo)
+- Maven
 
-## Configuración
+## Instalación
 
-1. Configura las variables de entorno:
-   - `MONGODB_URI`: URL de conexión a MongoDB (opcional)
-   - `MONGODB_DATABASE`: Nombre de la base de datos MongoDB (opcional)
-   - `DATABASE_URL`: URL de conexión a PostgreSQL (opcional)
-
-2. Instala las dependencias:
+1. **Backend Flask y Scraper**:
    ```
    pip install -r requirements.txt
    ```
 
-3. Inicia la API:
+2. **Frontend Java**:
+   ```
+   cd java-frontend
+   mvn clean install
+   ```
+
+## Configuración
+
+1. **MongoDB**:
+   - Asegúrate de tener una instancia de MongoDB ejecutándose.
+   - Configura las credenciales en un archivo `.env`.
+
+2. **PostgreSQL** (opcional):
+   - Configura las credenciales en el mismo archivo `.env`.
+
+## Ejecución
+
+1. **Scraper**:
+   ```
+   python scraper/main.py
+   ```
+
+2. **API**:
    ```
    python main.py
    ```
 
+3. **Frontend Java**:
+   ```
+   cd java-frontend
+   mvn tomcat:run
+   ```
+
+## Características de Anti-detección
+
+- Rotación de proxies
+- Rotación de user-agents
+- Gestión de cookies y sesiones
+- Patrones de navegación realistas
+
 ## Licencia
 
-Este proyecto está licenciado bajo la Licencia MIT.
+MIT
+
+## Autor
+
+[Tu nombre]
