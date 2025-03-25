@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://xmlns.jcp.org/jsf/html"
+      xmlns:f="http://xmlns.jcp.org/jsf/core"
+      xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+      xmlns:p="http://primefaces.org/ui">
+
+<h:head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><ui:insert name="title">Real Estate Investment Analysis</ui:insert></title>
+    
+    <!-- PrimeFaces Theme -->
+    <h:outputStylesheet name="primefaces-nova-dark/theme.css" library="primefaces-nova-dark" />
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
+    
+    <!-- Leaflet CSS for maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    
+    <!-- Custom CSS -->
+    <h:outputStylesheet name="css/styles.css" />
+    
+    <!-- Leaflet JS for maps -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    
+    <ui:insert name="head" />
+</h:head>
+
+<h:body>
+    <!-- Header -->
+    <header>
+        <p:menubar>
+            <p:menuitem value="Real Estate Analyzer" outcome="/index" styleClass="brand">
+                <i class="pi pi-building mr-2"></i>
+            </p:menuitem>
+            
+            <p:menuitem value="Dashboard" outcome="/index" icon="pi pi-home" />
+            <p:menuitem value="Properties" outcome="/views/properties" icon="pi pi-list" />
+            <p:menuitem value="Map View" outcome="/views/map" icon="pi pi-map" />
+            <p:menuitem value="Investment Opportunities" outcome="/views/opportunities" icon="pi pi-star" />
+            
+            <f:facet name="options">
+                <div class="ui-inputgroup">
+                    <p:inputText placeholder="Search..." />
+                    <p:commandButton icon="pi pi-search" styleClass="ui-button-warning" />
+                </div>
+            </f:facet>
+        </p:menubar>
+    </header>
+    
+    <!-- Global Messages -->
+    <p:growl id="messages" showDetail="true" sticky="true" />
+
+    <!-- Main Content -->
+    <main class="container">
+        <ui:insert name="content">
+            <!-- Default content will be replaced -->
+            <p>Default content</p>
+        </ui:insert>
+    </main>
+
+    <!-- Footer -->
+    <footer class="p-mt-5 p-py-4 bg-dark text-white">
+        <div class="container">
+            <div class="p-grid">
+                <div class="p-col-12 p-md-6">
+                    <h5>Real Estate Investment Analysis</h5>
+                    <p>A comprehensive tool for analyzing real estate investment opportunities in Spain.</p>
+                </div>
+                <div class="p-col-12 p-md-3">
+                    <h5>Data Sources</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="https://www.idealista.com" target="_blank" class="text-white">Idealista</a></li>
+                        <li><a href="https://www.fotocasa.es" target="_blank" class="text-white">Fotocasa</a></li>
+                    </ul>
+                </div>
+                <div class="p-col-12 p-md-3">
+                    <h5>Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="/index" class="text-white">Dashboard</a></li>
+                        <li><a href="/views/map" class="text-white">Map View</a></li>
+                        <li><a href="/views/opportunities" class="text-white">Investment Opportunities</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="text-center p-mt-3">
+                <p>© 2023 Real Estate Investment Analysis. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+</h:body>
+</html>
