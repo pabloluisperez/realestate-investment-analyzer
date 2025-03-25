@@ -13,4 +13,5 @@ dependencies = [
     "trafilatura>=2.0.0",
     "pymongo>=4.11.3",
     "numpy>=2.2.4",
+    "python-telegram-bot>=22.0",
 ]

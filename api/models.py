@@ -3,8 +3,8 @@ Data models for the Real Estate Investment Analysis API.
 These are not database models but data transfer objects.
 """
 
-from dataclasses import dataclass
-from typing import List, Dict, Optional, Any
+from dataclasses import dataclass, field
+from typing import List, Dict, Optional, Any, Set
 from datetime import datetime
 
 
@@ -66,3 +66,33 @@ class InvestmentOpportunity:
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     url: Optional[str] = None
+    is_bargain: Optional[bool] = None  # Indica si es un chollo
+
+
+@dataclass
+class UserPreference:
+    """Preferencias del usuario para notificaciones y búsqueda"""
+    user_id: str
+    cities: List[str] = field(default_factory=list)
+    neighborhoods: List[str] = field(default_factory=list)
+    min_price: Optional[float] = None
+    max_price: Optional[float] = None
+    min_size: Optional[float] = None
+    min_rooms: Optional[int] = None
+    property_types: List[str] = field(default_factory=list)
+    operation_type: str = "sale"  # Por defecto, compra
+    min_investment_score: float = 70.0  # Puntuación mínima para considerar una buena inversión
+    bargain_threshold: float = 15.0  # Porcentaje por debajo del precio medio para considerarlo chollo
+    telegram_chat_id: Optional[str] = None  # ID del chat de Telegram para notificaciones
+    notify_bargains: bool = True  # Si quiere recibir notificaciones de chollos
+    notify_new_listings: bool = False  # Si quiere notificaciones de nuevos listados
+    last_notification: Optional[datetime] = None
+
+
+@dataclass
+class TelegramConfig:
+    """Configuración del bot de Telegram"""
+    bot_token: str
+    bot_username: str
+    webhook_url: Optional[str] = None
+    enabled: bool = False

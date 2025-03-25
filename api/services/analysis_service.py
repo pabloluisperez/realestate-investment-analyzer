@@ -167,6 +167,11 @@ class AnalysisService:
             if opportunity['price_per_sqm'] and avg_price_per_sqm:
                 price_diff = ((avg_price_per_sqm - opportunity['price_per_sqm']) / avg_price_per_sqm) * 100
                 opportunity['price_difference'] = round(price_diff, 2)
+                
+                # Determinar si es un chollo (precio al menos 15% por debajo de la media del área)
+                opportunity['is_bargain'] = price_diff >= 15.0 and opportunity['investment_score'] >= 70.0
+            else:
+                opportunity['is_bargain'] = False
             
             # Calculate estimated ROI (simple version)
             if opportunity['operation_type'] == 'sale' and opportunity['price'] and avg_price_per_sqm:
@@ -182,6 +187,10 @@ class AnalysisService:
                 roi = ((estimated_future_price - opportunity['price'] - renovation_cost) / 
                        (opportunity['price'] + renovation_cost)) * 100
                 opportunity['estimated_roi'] = round(roi, 2)
+                
+                # Un ROI alto también puede ser considerado un chollo
+                if opportunity['estimated_roi'] >= 25.0 and opportunity['investment_score'] >= 75.0:
+                    opportunity['is_bargain'] = True
             
             # Get count of comparable properties
             opportunity['comparable_count'] = len(property_dict.get('comparable_properties', []))
