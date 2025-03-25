@@ -78,13 +78,15 @@ class PropertyService:
                 query_filter['rooms'] = {'$gte': min_rooms}
             
             # Query database
-            cursor = self.collection.find(query_filter).limit(limit).skip(skip)
-            
-            # Convert to list of dictionaries
-            properties = loads(dumps(list(cursor)))
-            
-            # Convert MongoDB dates to string
-            properties = self._format_properties(properties)
+            try:
+                cursor = self.collection.find(query_filter).limit(limit).skip(skip)
+                # Convert to list of dictionaries
+                properties = loads(dumps(list(cursor)))
+                # Convert MongoDB dates to string
+                properties = self._format_properties(properties)
+            except Exception as e:
+                logger.warning(f"Error querying database: {str(e)}, returning empty list")
+                properties = []
             
             return properties
         except Exception as e:
@@ -166,17 +168,21 @@ class PropertyService:
                 query_filter['price'] = price_filter
             
             # Query database
-            cursor = self.collection.find(
-                query_filter,
-                {
-                    'id': 1, 'source': 1, 'title': 1, 'price': 1, 'size': 1,
-                    'latitude': 1, 'longitude': 1, 'property_type': 1,
-                    'investment_score': 1, 'url': 1, 'city': 1, 'neighborhood': 1
-                }
-            ).limit(limit)
-            
-            # Convert to list of dictionaries
-            properties = loads(dumps(list(cursor)))
+            try:
+                cursor = self.collection.find(
+                    query_filter,
+                    {
+                        'id': 1, 'source': 1, 'title': 1, 'price': 1, 'size': 1,
+                        'latitude': 1, 'longitude': 1, 'property_type': 1,
+                        'investment_score': 1, 'url': 1, 'city': 1, 'neighborhood': 1
+                    }
+                ).limit(limit)
+                
+                # Convert to list of dictionaries
+                properties = loads(dumps(list(cursor)))
+            except Exception as e:
+                logger.warning(f"Error querying database: {str(e)}, returning empty list")
+                properties = []
             
             return properties
         except Exception as e:

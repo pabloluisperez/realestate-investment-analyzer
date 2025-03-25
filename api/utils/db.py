@@ -13,13 +13,33 @@ from collections import defaultdict
 logger = logging.getLogger(__name__)
 
 # Mock DB implementation that returns empty data
+class FakeCursor:
+    def __init__(self, items=None):
+        self.items = items or []
+        
+    def limit(self, n):
+        return self
+        
+    def skip(self, n):
+        return self
+        
+    def sort(self, field, direction=1):
+        return self
+        
+    def __iter__(self):
+        return iter(self.items)
+        
+    def __list__(self):
+        return self.items
+
+
 class FakeCollection:
     def __init__(self, name):
         self.name = name
         
     def find(self, query=None, projection=None):
         logger.debug(f"Find called on {self.name} with {query}")
-        return []
+        return FakeCursor()
         
     def find_one(self, query=None):
         logger.debug(f"Find one called on {self.name} with {query}")

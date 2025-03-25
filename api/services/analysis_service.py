@@ -58,10 +58,13 @@ class AnalysisService:
                 query_filter['operation_type'] = operation_type
             
             # Query database
-            cursor = self.collection.find(query_filter).sort('investment_score', -1).limit(limit)
-            
-            # Convert to list of dictionaries
-            properties = loads(dumps(list(cursor)))
+            try:
+                cursor = self.collection.find(query_filter).sort('investment_score', -1).limit(limit)
+                # Convert to list of dictionaries
+                properties = loads(dumps(list(cursor)))
+            except Exception as e:
+                logger.warning(f"Error querying database: {str(e)}, returning empty list")
+                properties = []
             
             # Enhance with additional analysis
             opportunities = []
