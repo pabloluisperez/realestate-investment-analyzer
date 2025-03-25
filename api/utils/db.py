@@ -51,6 +51,14 @@ class FakeCollection:
     def distinct(self, field, query=None):
         return []
         
+    def update_one(self, filter_query, update_query, upsert=False):
+        logger.debug(f"Update one called on {self.name} with filter {filter_query} and update {update_query}")
+        return {"modified_count": 0, "matched_count": 0, "upserted_id": None}
+        
+    def insert_one(self, document):
+        logger.debug(f"Insert one called on {self.name} with {document}")
+        return {"inserted_id": "fake_id"}
+        
     def aggregate(self, pipeline):
         return []
 

@@ -8,9 +8,24 @@ import asyncio
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 
-from telegram import Bot, Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
-from telegram.error import TelegramError
+# Telegram imports condicionados para evitar errores cuando no esté disponible
+try:
+    from telegram import Bot, Update
+    from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
+    from telegram.error import TelegramError
+    TELEGRAM_AVAILABLE = True
+except ImportError:
+    TELEGRAM_AVAILABLE = False
+    # Clases ficticias para evitar errores de tipo
+    class Bot:
+        def __init__(self, token):
+            self.token = token
+        
+        async def send_message(self, *args, **kwargs):
+            pass
+    
+    class TelegramError(Exception):
+        pass
 
 from api.utils.db import get_db_connection
 from api.models import UserPreference, InvestmentOpportunity, TelegramConfig
@@ -239,7 +254,7 @@ class NotificationService:
             preference = self.get_user_preference(pref_data["user_id"])
             
             # Verificar si la propiedad coincide con las preferencias
-            if self._matches_preference(opportunity, preference):
+            if preference and self._matches_preference(opportunity, preference):
                 matching_preferences.append(preference)
                 
         return matching_preferences

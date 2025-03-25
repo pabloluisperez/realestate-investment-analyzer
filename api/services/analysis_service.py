@@ -3,11 +3,31 @@ Service for analyzing property data and identifying investment opportunities.
 """
 
 import logging
+import asyncio
 from typing import List, Dict, Any, Optional, Tuple
-from bson.json_util import dumps, loads
 import json
-import numpy as np
+
+# Importaciones condicionales para evitar errores cuando las librerías no estén disponibles
+try:
+    from bson.json_util import dumps, loads
+except ImportError:
+    # Implementaciones simples como fallback 
+    def dumps(obj):
+        return json.dumps(str(obj))
+    def loads(obj):
+        try:
+            return json.loads(obj)
+        except:
+            return obj
+
+try:
+    import numpy as np
+except ImportError:
+    pass
+
 from api.utils.db import get_db_connection
+from api.models import InvestmentOpportunity
+from api.services.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +39,11 @@ class AnalysisService:
         """Initialize the analysis service"""
         self.db = get_db_connection()
         self.collection = self.db['properties']
+        self.notification_service = NotificationService()
     
     def get_investment_opportunities(self, city=None, neighborhood=None, min_score=70,
                                     property_type=None, operation_type=None,
-                                    limit=50) -> List[Dict[str, Any]]:
+                                    limit=50, notify_bargains=False) -> List[Dict[str, Any]]:
         """
         Get investment opportunities based on analysis
         
@@ -33,6 +54,7 @@ class AnalysisService:
             property_type: Type of property (apartment, house, etc.)
             operation_type: Type of operation (sale, rent)
             limit: Maximum number of properties to return
+            notify_bargains: Si se deben enviar notificaciones para los chollos encontrados
             
         Returns:
             List of investment opportunities
@@ -68,14 +90,64 @@ class AnalysisService:
             
             # Enhance with additional analysis
             opportunities = []
+            bargains = []
+            
             for prop in properties:
                 opportunity = self._create_opportunity(prop)
                 opportunities.append(opportunity)
+                
+                # Separar los chollos para posibles notificaciones
+                if opportunity.get('is_bargain'):
+                    bargains.append(opportunity)
+            
+            # Si se solicita, notificar a los usuarios sobre los chollos
+            if notify_bargains and bargains:
+                # Procesamiento en segundo plano para no bloquear la respuesta
+                asyncio.create_task(self._notify_bargains(bargains))
             
             return opportunities
         except Exception as e:
             logger.error(f"Error getting investment opportunities: {str(e)}")
             return []
+    
+    async def _notify_bargains(self, bargains: List[Dict[str, Any]]) -> None:
+        """
+        Notificar a los usuarios sobre chollos inmobiliarios
+        
+        Args:
+            bargains: Lista de oportunidades de inversión consideradas chollos
+        """
+        try:
+            for bargain in bargains:
+                # Convertir el diccionario a la clase InvestmentOpportunity para el servicio de notificaciones
+                opportunity = InvestmentOpportunity(
+                    property_id=bargain.get('property_id', ''),
+                    source=bargain.get('source', ''),
+                    title=bargain.get('title', ''),
+                    price=bargain.get('price', 0),
+                    size=bargain.get('size', 0),
+                    city=bargain.get('city', ''),
+                    neighborhood=bargain.get('neighborhood'),
+                    property_type=bargain.get('property_type'),
+                    operation_type=bargain.get('operation_type'),
+                    investment_score=bargain.get('investment_score', 0),
+                    price_per_sqm=bargain.get('price_per_sqm'),
+                    avg_area_price_per_sqm=bargain.get('avg_area_price_per_sqm'),
+                    price_difference=bargain.get('price_difference'),
+                    estimated_roi=bargain.get('estimated_roi'),
+                    latitude=bargain.get('latitude'),
+                    longitude=bargain.get('longitude'),
+                    url=bargain.get('url'),
+                    is_bargain=True
+                )
+                
+                # Notificar a los usuarios que coinciden con esta oportunidad
+                notify_count = await self.notification_service.notify_matching_users(opportunity)
+                
+                if notify_count > 0:
+                    logger.info(f"Notificados {notify_count} usuarios sobre el chollo: {opportunity.title}")
+        except Exception as e:
+            logger.error(f"Error al notificar chollos: {str(e)}")
     
     def analyze_property(self, property_id: str, source: str) -> Optional[Dict[str, Any]]:
         """
